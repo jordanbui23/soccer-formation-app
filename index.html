@@ -215,6 +215,7 @@ const TOKEN_CLASS = { GK: 'gk', DEF: 'def', MID: 'mid', FWD: 'fwd' };
 let roster = [];
 let currentFormation = '4-4-2';
 let playerPositions = {};
+let slotOverrides = {};
 
 function getStarters() { return roster.filter(p => p.starter); }
 function getSubs() { return roster.filter(p => !p.starter); }
@@ -234,6 +235,15 @@ function assignSlots(starters) {
   };
 
   starters.forEach((player, playerIdx) => {
+    const override = slotOverrides[player.id];
+    if (override !== undefined && slots[override] === null) {
+      slots[override] = playerIdx;
+      assigned.add(playerIdx);
+    }
+  });
+
+  starters.forEach((player, playerIdx) => {
+    if (assigned.has(playerIdx)) return;
     const compatible = POSITION_COMPATIBILITY[player.pos] || [player.pos];
     for (let i = 0; i < formation.positions.length; i++) {
       if (slots[i] !== null) continue;
@@ -283,6 +293,7 @@ function changePosition(id, newPos) {
   if (player) {
     player.pos = newPos;
     delete playerPositions[id];
+    delete slotOverrides[id];
     render();
   }
 }
@@ -429,9 +440,10 @@ function endDrag(e) {
   if (closestIdx >= 0 && closestDist < 50) {
     const otherPlayer = starters[closestIdx];
 
-    const rosterIdxA = roster.findIndex(p => p.id === draggedId);
-    const rosterIdxB = roster.findIndex(p => p.id === otherPlayer.id);
-    [roster[rosterIdxA], roster[rosterIdxB]] = [roster[rosterIdxB], roster[rosterIdxA]];
+    const draggedSlot = slotAssignments[draggedIdx];
+    const otherSlot = slotAssignments[closestIdx];
+    slotOverrides[draggedId] = otherSlot;
+    slotOverrides[otherPlayer.id] = draggedSlot;
 
     delete playerPositions[draggedId];
     delete playerPositions[otherPlayer.id];
@@ -450,6 +462,7 @@ function endDrag(e) {
 document.getElementById('formation-select').addEventListener('change', (e) => {
   currentFormation = e.target.value;
   playerPositions = {};
+  slotOverrides = {};
   renderField();
 });
 
@@ -476,7 +489,7 @@ function getSavedRosters() {
 function saveRoster(name) {
   if (!name) return;
   const saved = getSavedRosters();
-  saved[name] = { roster, currentFormation, playerPositions };
+  saved[name] = { roster, currentFormation, playerPositions, slotOverrides };
   localStorage.setItem('soccer-rosters', JSON.stringify(saved));
   renderSavedList();
 }
@@ -487,6 +500,7 @@ function loadRoster(name) {
   roster = saved[name].roster;
   currentFormation = saved[name].currentFormation;
   playerPositions = saved[name].playerPositions || {};
+  slotOverrides = saved[name].slotOverrides || {};
   document.getElementById('formation-select').value = currentFormation;
   render();
 }
