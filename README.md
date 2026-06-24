@@ -2,7 +2,7 @@
 
 A simple browser-based tool for creating soccer formations, managing rosters, and exporting lineup sheets as PNG or PDF.
 
-**Live demo:** [https://jordanbui23.github.io/soccer-formations/](https://jordanbui23.github.io/soccer-formations/)
+**Live demo:** [https://jordanbui23.github.io/soccer-formation-app/](https://jordanbui23.github.io/soccer-formation-app/)
 
 ## Features
 
@@ -24,11 +24,11 @@ No build step, no dependencies, no server required.
 2. Open `index.html` in any modern browser
 
 ```bash
-git clone https://github.com/jordanbui23/soccer-formations.git
-open soccer-formations/index.html
+git clone https://github.com/jordanbui23/soccer-formation-app.git
+open soccer-formation-app/index.html
 ```
 
-Or just visit the [live demo](https://jordanbui23.github.io/soccer-formations/).
+Or just visit the [live demo](https://jordanbui23.github.io/soccer-formation-app/).
 
 ## Usage
 
