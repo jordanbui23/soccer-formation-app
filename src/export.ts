@@ -9,13 +9,9 @@ import {
 import { getStarters, getSubs } from './lineup';
 import { pitchMarkupSvgInner } from './field';
 import { el } from './dom';
+import { foregroundFor, isDarkColor, normalizeHexColor } from './color';
 
-const GROUP_COLORS: Record<string, string> = {
-  GK: '#e08a1e',
-  DEF: '#2f6fb0',
-  MID: '#1f9552',
-  FWD: '#c0392b',
-};
+const GK_COLOR = '#e08a1e';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -32,25 +28,32 @@ function coordsFor(state: LineupState, player: LineupPlayer, slotIdx: number): [
   return custom ? [custom.x, custom.y] : [base[0], base[1]];
 }
 
-function buildFieldSvg(state: LineupState): SVGSVGElement {
+function buildFieldSvg(state: LineupState, teamColor: string): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${FIELD_WIDTH} ${FIELD_HEIGHT}`);
   svg.setAttribute('width', '360');
   svg.setAttribute('height', '500');
   svg.innerHTML = pitchMarkupSvgInner();
 
+  const kit = normalizeHexColor(teamColor);
+  const kitText = foregroundFor(kit);
+  const kitStrokeWidth = isDarkColor(kit) ? 3 : 2;
+
   const starters = getStarters(state);
   const slots = assignSlots(state.formation, starters, state.slotOverrides);
   starters.forEach((player, i) => {
     const slotIdx = slots[i] ?? i;
     const [x, y] = coordsFor(state, player, slotIdx);
-    const color = GROUP_COLORS[positionGroup(player.pos)];
-    svg.append(svgEl('circle', { cx: x, cy: y, r: 22, fill: color, stroke: '#fff', 'stroke-width': 2 }));
+    const isGk = positionGroup(player.pos) === 'GK';
+    const fill = isGk ? GK_COLOR : kit;
+    const textFill = isGk ? '#ffffff' : kitText;
+    const strokeWidth = isGk ? 2 : kitStrokeWidth;
+    svg.append(svgEl('circle', { cx: x, cy: y, r: 22, fill, stroke: '#fff', 'stroke-width': strokeWidth }));
     const label = svgEl('text', {
       x,
       y: y + 4,
       'text-anchor': 'middle',
-      fill: '#fff',
+      fill: textFill,
       'font-size': 9,
       'font-weight': 'bold',
       'font-family': 'sans-serif',
@@ -103,7 +106,7 @@ function buildExportArea(game: Game, state: LineupState): HTMLElement {
         buildTable('Starting XI', starters),
         (() => {
           const wrap = el('div', {});
-          wrap.append(buildFieldSvg(state));
+          wrap.append(buildFieldSvg(state, game.teamColor));
           return wrap;
         })(),
         subs.length > 0 ? buildTable('Substitutes', subs) : el('div', {}),
