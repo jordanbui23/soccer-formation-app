@@ -1,6 +1,7 @@
 import type { Game, LineupState, Rsvp, RsvpStatus } from '../types';
 import { RSVP_STATUSES, STATUS_LABEL, emptyLineup } from '../types';
 import { getRepository } from '../data';
+import { normalizeHexColor } from '../color';
 import { el, formatMatchDateTime } from '../dom';
 import { navigate } from '../router';
 import { notify, errorMessage } from '../ui/toast';
@@ -147,29 +148,105 @@ export async function adminGameDetailPage(gameId: string): Promise<void> {
   }
   renderRsvpPanel();
 
-  const toggleBtn = el('button', { type: 'button', class: currentGame.isOpen ? 'btn-danger' : 'btn-accent' }, [
-    currentGame.isOpen ? 'Close RSVPs' : 'Reopen RSVPs',
-  ]);
-  const bannerHost = el('span', {}, [statusBanner(currentGame.isOpen)]);
-  toggleBtn.addEventListener('click', () => {
-    void (async () => {
-      toggleBtn.setAttribute('aria-busy', 'true');
-      toggleBtn.disabled = true;
-      try {
-        const updated = await repo.setGameOpen(currentGame.id, !currentGame.isOpen);
-        currentGame.isOpen = updated.isOpen;
-        toggleBtn.textContent = currentGame.isOpen ? 'Close RSVPs' : 'Reopen RSVPs';
-        toggleBtn.className = currentGame.isOpen ? 'btn-danger' : 'btn-accent';
-        bannerHost.replaceChildren(statusBanner(currentGame.isOpen));
-        notify(currentGame.isOpen ? 'RSVPs reopened.' : 'RSVPs closed.');
-      } catch (err) {
-        notify(errorMessage(err), 'error');
-      } finally {
-        toggleBtn.removeAttribute('aria-busy');
-        toggleBtn.disabled = false;
+  const fixtureHost = el('div', { class: 'card__body section-gap' });
+
+  function fixtureEditForm(): HTMLElement {
+    const opponent = el('input', { type: 'text', id: 'ge-opp', maxLength: 40, required: true, value: currentGame.opponent });
+    const date = el('input', { type: 'date', id: 'ge-date', required: true, value: currentGame.matchDate });
+    const time = el('input', { type: 'time', id: 'ge-time', value: currentGame.matchTime });
+    const venue = el('input', { type: 'text', id: 'ge-venue', maxLength: 60, value: currentGame.venue });
+    const color = el('input', { type: 'color', id: 'ge-color', value: normalizeHexColor(currentGame.teamColor) });
+    const save = el('button', { type: 'submit', class: 'btn-accent' }, ['Save changes']);
+
+    const form = el('form', { class: 'section-gap', novalidate: true }, [
+      el('h2', { class: 'card__title' }, ['Edit fixture']),
+      el('div', { class: 'form-grid' }, [
+        el('div', { class: 'field-group' }, [el('label', { for: 'ge-opp' }, ['Opponent']), opponent]),
+        el('div', { class: 'field-group' }, [el('label', { for: 'ge-date' }, ['Date']), date]),
+        el('div', { class: 'field-group' }, [el('label', { for: 'ge-time' }, ['Kickoff']), time]),
+        el('div', { class: 'field-group' }, [el('label', { for: 'ge-venue' }, ['Venue']), venue]),
+        el('div', { class: 'field-group' }, [el('label', { for: 'ge-color' }, ['Team color']), color]),
+      ]),
+      save,
+    ]);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!opponent.value.trim() || !date.value) {
+        notify('Opponent and date are required.', 'error');
+        return;
       }
-    })();
-  });
+      void (async () => {
+        save.setAttribute('aria-busy', 'true');
+        save.disabled = true;
+        try {
+          const updated = await repo.updateGame(currentGame.id, {
+            opponent: opponent.value,
+            matchDate: date.value,
+            matchTime: time.value,
+            venue: venue.value,
+            teamColor: color.value,
+          });
+          currentGame.opponent = updated.opponent;
+          currentGame.matchDate = updated.matchDate;
+          currentGame.matchTime = updated.matchTime;
+          currentGame.venue = updated.venue;
+          currentGame.teamColor = updated.teamColor;
+          editor.setGame(updated);
+          renderFixture();
+          notify('Fixture updated.');
+        } catch (err) {
+          notify(errorMessage(err), 'error');
+        } finally {
+          save.removeAttribute('aria-busy');
+          save.disabled = false;
+        }
+      })();
+    });
+
+    return form;
+  }
+
+  function renderFixture(): void {
+    const teamColor = normalizeHexColor(currentGame.teamColor);
+
+    const banner = statusBanner(currentGame.isOpen);
+    const toggleBtn = el('button', { type: 'button', class: currentGame.isOpen ? 'btn-danger' : 'btn-accent' }, [
+      currentGame.isOpen ? 'Close RSVPs' : 'Reopen RSVPs',
+    ]);
+    toggleBtn.addEventListener('click', () => {
+      void (async () => {
+        toggleBtn.setAttribute('aria-busy', 'true');
+        toggleBtn.disabled = true;
+        try {
+          const updated = await repo.setGameOpen(currentGame.id, !currentGame.isOpen);
+          currentGame.isOpen = updated.isOpen;
+          renderFixture();
+          notify(currentGame.isOpen ? 'RSVPs reopened.' : 'RSVPs closed.');
+        } catch (err) {
+          notify(errorMessage(err), 'error');
+          toggleBtn.removeAttribute('aria-busy');
+          toggleBtn.disabled = false;
+        }
+      })();
+    });
+
+    fixtureHost.replaceChildren(
+      el('span', { class: 'fixture-accent', 'aria-hidden': 'true', style: `--team-color:${teamColor};` }),
+      el('p', { class: 'eyebrow' }, ['Fixture']),
+      el('div', { class: 'fixture-headline' }, [
+        el('span', { class: 'kit-swatch kit-swatch--lg', style: `background:${teamColor};`, 'aria-hidden': 'true' }),
+        el('h1', { class: 'card__title', style: 'font-size:1.7rem;' }, [`Our XI vs ${currentGame.opponent}`]),
+      ]),
+      el('p', { class: 'starter-count' }, [
+        `${formatMatchDateTime(currentGame.matchDate, currentGame.matchTime) || 'Date TBD'} · ${currentGame.venue || 'Venue TBD'}`,
+      ]),
+      el('div', { style: 'display:flex;gap:12px;align-items:center;flex-wrap:wrap;' }, [banner, toggleBtn]),
+      el('div', { class: 'field-group' }, [el('label', {}, ['Share link (Messenger)']), shareRow(currentGame)]),
+      fixtureEditForm(),
+    );
+  }
+  renderFixture();
 
   const actions = el('div', { class: 'topbar-actions' }, [
     el('a', { class: 'btn-ghost btn-sm', href: '/admin', 'data-link': 'true' }, ['← Games']),
@@ -180,19 +257,7 @@ export async function adminGameDetailPage(gameId: string): Promise<void> {
     el('div', {}, [
       topbar(actions),
       el('main', { class: 'page', id: 'main' }, [
-        el('section', { class: 'card', style: 'margin-bottom:24px;' }, [
-          el('div', { class: 'card__body section-gap' }, [
-            el('p', { class: 'eyebrow' }, ['Fixture']),
-            el('h1', { class: 'card__title', style: 'font-size:1.7rem;' }, [
-              `Our XI vs ${currentGame.opponent}`,
-            ]),
-            el('p', { class: 'starter-count' }, [
-              `${formatMatchDateTime(currentGame.matchDate, currentGame.matchTime) || 'Date TBD'} · ${currentGame.venue || 'Venue TBD'}`,
-            ]),
-            el('div', { style: 'display:flex;gap:12px;align-items:center;flex-wrap:wrap;' }, [bannerHost, toggleBtn]),
-            el('div', { class: 'field-group' }, [el('label', {}, ['Share link (Messenger)']), shareRow(currentGame)]),
-          ]),
-        ]),
+        el('section', { class: 'card', style: 'margin-bottom:24px;' }, [fixtureHost]),
         el('div', { class: 'detail-grid' }, [
           el('section', { class: 'card' }, [rsvpPanel]),
           el('section', {}, [editor.element]),

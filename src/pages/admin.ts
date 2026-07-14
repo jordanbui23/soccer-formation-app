@@ -1,5 +1,6 @@
 import type { AdminSession, Game } from '../types';
 import { getRepository } from '../data';
+import { DEFAULT_TEAM_COLOR } from '../color';
 import { el, formatMatchDateTime } from '../dom';
 import { navigate } from '../router';
 import { notify, errorMessage } from '../ui/toast';
@@ -78,6 +79,7 @@ function createGameForm(onCreated: () => void): HTMLElement {
   const date = el('input', { type: 'date', id: 'g-date', required: true });
   const time = el('input', { type: 'time', id: 'g-time' });
   const venue = el('input', { type: 'text', id: 'g-venue', maxLength: 60, placeholder: 'Venue' });
+  const color = el('input', { type: 'color', id: 'g-color', value: DEFAULT_TEAM_COLOR });
   const submit = el('button', { type: 'submit', class: 'btn-accent' }, ['Create game']);
 
   const form = el('form', { novalidate: true }, [
@@ -86,6 +88,7 @@ function createGameForm(onCreated: () => void): HTMLElement {
       el('div', { class: 'field-group' }, [el('label', { for: 'g-date' }, ['Date']), date]),
       el('div', { class: 'field-group' }, [el('label', { for: 'g-time' }, ['Kickoff']), time]),
       el('div', { class: 'field-group' }, [el('label', { for: 'g-venue' }, ['Venue']), venue]),
+      el('div', { class: 'field-group' }, [el('label', { for: 'g-color' }, ['Team color']), color]),
     ]),
     submit,
   ]);
@@ -105,6 +108,7 @@ function createGameForm(onCreated: () => void): HTMLElement {
           matchDate: date.value,
           matchTime: time.value,
           venue: venue.value,
+          teamColor: color.value,
         });
         notify('Game created.');
         onCreated();

@@ -176,7 +176,7 @@ a {
   background: repeating-linear-gradient(
     90deg,
     var(--c-accent) 0 28px,
-    var(--c-ink) 28px 34px
+    var(--team-color, var(--c-ink)) 28px 34px
   );
 }
 .ticket .ticket-eyebrow {
@@ -214,6 +214,19 @@ a {
   font-size: var(--fs-h3);
   font-weight: 500;
 }
+.ticket-kit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.kit-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(246, 241, 231, 0.5);
+  box-sizing: border-box;
+}
 .status-banner {
   display: inline-flex;
   align-items: center;
@@ -240,6 +253,26 @@ a {
 .status-banner.is-closed {
   background: rgba(178, 58, 72, 0.2);
   color: #ffb0b9;
+}
+
+/* ---------- fixture header ---------- */
+.fixture-accent {
+  display: block;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--team-color, var(--c-ink));
+}
+.fixture-headline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.kit-swatch--lg {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-card-line);
+  flex: 0 0 auto;
 }
 
 /* ---------- cards ---------- */
@@ -310,6 +343,11 @@ select:disabled,
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+input[type='color'] {
+  min-height: 44px;
+  padding: 4px;
+  cursor: pointer;
 }
 .form-row {
   display: flex;
@@ -570,10 +608,13 @@ button[aria-busy='true']::after {
 /* ---------- share / token box ---------- */
 .copy-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
   align-items: stretch;
 }
 .copy-row input {
+  flex: 1 1 280px;
+  min-width: 0;
   font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
   font-size: var(--fs-small);
 }
@@ -707,6 +748,10 @@ button[aria-busy='true']::after {
 .dot-def { background: var(--grp-def); }
 .dot-mid { background: var(--grp-mid); }
 .dot-fwd { background: var(--grp-fwd); }
+.dot--kit {
+  border: 1px solid rgba(22, 24, 29, 0.3);
+  box-sizing: border-box;
+}
 
 .pitch-wrap {
   position: relative;
@@ -763,9 +808,14 @@ button[aria-busy='true']::after {
   padding: 0 2px;
 }
 .token.gk { background: var(--grp-gk); }
-.token.def { background: var(--grp-def); }
-.token.mid { background: var(--grp-mid); }
-.token.fwd { background: var(--grp-fwd); }
+.token--kit-dark {
+  border-color: #fff;
+  border-width: 3px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.92), 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.token--kit-light .token-name {
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.55);
+}
 
 .pool {
   display: grid;

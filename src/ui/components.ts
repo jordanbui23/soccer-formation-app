@@ -1,5 +1,6 @@
 import type { Game, PublicRsvp, RsvpStatus } from '../types';
 import { STATUS_LABEL } from '../types';
+import { normalizeHexColor } from '../color';
 import { el, formatMatchDateTime } from '../dom';
 
 export function appRoot(): HTMLElement {
@@ -33,7 +34,8 @@ export function statusBanner(isOpen: boolean): HTMLElement {
 }
 
 export function matchTicket(game: Game, extra?: Node | null): HTMLElement {
-  return el('section', { class: 'ticket' }, [
+  const teamColor = normalizeHexColor(game.teamColor);
+  return el('section', { class: 'ticket', style: `--team-color:${teamColor};` }, [
     el('span', { class: 'ticket-accent', 'aria-hidden': 'true' }),
     el('p', { class: 'eyebrow ticket-eyebrow' }, ['Match Day']),
     el('h1', { class: 'ticket-matchup' }, [
@@ -44,9 +46,20 @@ export function matchTicket(game: Game, extra?: Node | null): HTMLElement {
     el('div', { class: 'ticket-meta' }, [
       metaItem('Kickoff', formatMatchDateTime(game.matchDate, game.matchTime) || 'TBD'),
       metaItem('Venue', game.venue || 'TBD'),
+      kitItem(teamColor),
     ]),
     extra ?? statusBanner(game.isOpen),
     el('span', { class: 'ticket-perforation', 'aria-hidden': 'true' }),
+  ]);
+}
+
+function kitItem(teamColor: string): HTMLElement {
+  return el('div', {}, [
+    el('span', { class: 'meta-label' }, ['Kit']),
+    el('span', { class: 'ticket-kit' }, [
+      el('span', { class: 'kit-swatch', style: `background:${teamColor};`, 'aria-hidden': 'true' }),
+      el('span', { class: 'meta-value' }, ['Home']),
+    ]),
   ]);
 }
 
