@@ -76,8 +76,8 @@ URL routing is handled by the History API, no routing dependency.
 | `/game/:slug/edit/:rsvpId#token=…` | private RSVP edit link |
 
 The edit token travels in the URL **fragment** (`#token=…`), which browsers never send to
-the server, so it stays out of request logs. `netlify.toml` and `public/_redirects` provide
-the SPA fallback so deep links resolve on Netlify.
+the server, so it stays out of request logs. `public/_redirects` provides the SPA fallback so
+deep links resolve on Cloudflare Pages.
 
 ## How RSVP editing stays private
 
@@ -117,11 +117,20 @@ All eight preset formations from the original build are preserved with identical
 compatible slots, can be dragged to nudge, dropped onto a teammate to swap, or nudged with the
 keyboard (focus a token, use the arrow keys). Max 11 starters is enforced.
 
-## Deploy to Netlify
+## Deploy to Cloudflare Pages
 
-Build command `npm run build`, publish directory `dist`. `netlify.toml` already configures the
-SPA redirect and a few security headers. Set the two `VITE_SUPABASE_*` environment variables in
-the Netlify UI for production; leave them unset to ship the demo sandbox.
+Create a Pages project connected to this repository with:
+
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+
+`public/_redirects` supplies the SPA fallback (`/* /index.html 200`) so History-API deep links
+resolve, and `public/_headers` applies the security headers on every response. Both are copied
+verbatim into `dist` at build time, so Cloudflare Pages picks them up with no dashboard config.
+
+Set the two `VITE_SUPABASE_*` environment variables (for both **Production** and **Preview**) in
+the Pages project settings for production; leave them unset to ship the demo sandbox. See
+[`MIGRATION.md`](./MIGRATION.md) for the full Netlify-to-Pages cutover and rollback record.
 
 ## Tech notes
 
