@@ -129,7 +129,7 @@ async function renderPng(game: Game, state: LineupState): Promise<string> {
   try {
     await new Promise((r) => setTimeout(r, 60));
     const { toPng } = await import('html-to-image');
-    return await toPng(area, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+    return await toPng(area, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff', skipFonts: true });
   } finally {
     area.remove();
   }
