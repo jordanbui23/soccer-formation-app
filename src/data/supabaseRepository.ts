@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import { RSVP_STATUSES } from '../types';
 import { isValidName, normalizeName } from '../lineup';
+import { isValidHexColor, normalizeHexColor } from '../color';
 import { Repository, RepositoryError } from './repository';
 
 interface GameRow {
@@ -21,6 +22,7 @@ interface GameRow {
   match_date: string;
   match_time: string | null;
   venue: string | null;
+  team_color: string | null;
   is_open: boolean;
   created_at: string;
 }
@@ -34,7 +36,7 @@ interface RsvpRow {
   updated_at: string;
 }
 
-const GAME_COLUMNS = 'id, slug, opponent, match_date, match_time, venue, is_open, created_at';
+const GAME_COLUMNS = 'id, slug, opponent, match_date, match_time, venue, team_color, is_open, created_at';
 const RSVP_COLUMNS = 'id, game_id, name, status, created_at, updated_at';
 
 function toGame(row: GameRow): Game {
@@ -45,6 +47,7 @@ function toGame(row: GameRow): Game {
     matchDate: row.match_date,
     matchTime: row.match_time ?? '',
     venue: row.venue ?? '',
+    teamColor: normalizeHexColor(row.team_color),
     isOpen: row.is_open,
     createdAt: row.created_at,
   };
@@ -70,6 +73,13 @@ function validate(name: string, status: RsvpStatus): string {
     throw new RepositoryError('invalid_status', 'That availability option is not allowed.');
   }
   return clean;
+}
+
+function validateColor(teamColor: string): string {
+  if (!isValidHexColor(teamColor)) {
+    throw new RepositoryError('invalid_color', 'Choose a valid team color.');
+  }
+  return normalizeHexColor(teamColor);
 }
 
 function fail(prefix: string, message: string | undefined): never {
@@ -124,10 +134,33 @@ export class SupabaseRepository implements Repository {
         match_date: input.matchDate,
         match_time: input.matchTime || null,
         venue: normalizeName(input.venue) || null,
+        team_color: validateColor(input.teamColor),
       })
       .select(GAME_COLUMNS)
       .single();
     if (error || !data) fail('create_game_failed', error?.message);
+    return toGame(data as GameRow);
+  }
+
+  async updateGame(id: string, input: GameInput): Promise<Game> {
+    const opponent = normalizeName(input.opponent);
+    if (!isValidName(opponent)) {
+      throw new RepositoryError('invalid_name', 'Opponent name is required (1-40 characters).');
+    }
+    if (!input.matchDate) throw new RepositoryError('invalid_date', 'Match date is required.');
+    const { data, error } = await this.client
+      .from('games')
+      .update({
+        opponent,
+        match_date: input.matchDate,
+        match_time: input.matchTime || null,
+        venue: normalizeName(input.venue) || null,
+        team_color: validateColor(input.teamColor),
+      })
+      .eq('id', id)
+      .select(GAME_COLUMNS)
+      .single();
+    if (error || !data) fail('update_game_failed', error?.message);
     return toGame(data as GameRow);
   }
 

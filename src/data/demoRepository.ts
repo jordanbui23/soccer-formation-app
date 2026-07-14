@@ -12,6 +12,7 @@ import type {
 import { RSVP_STATUSES } from '../types';
 import { generateEditToken, hashToken, newId, timingSafeEqual } from '../crypto';
 import { isValidName, normalizeName } from '../lineup';
+import { isValidHexColor, normalizeHexColor } from '../color';
 import { Repository, RepositoryError } from './repository';
 import { slugify } from './config';
 
@@ -39,6 +40,10 @@ function emptyStore(): StoreShape {
   return { seeded: false, games: [], rsvps: [], lineups: {} };
 }
 
+function normalizeGame(game: Game): Game {
+  return { ...game, teamColor: normalizeHexColor(game.teamColor) };
+}
+
 function loadStore(): StoreShape {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -46,7 +51,7 @@ function loadStore(): StoreShape {
     const parsed = JSON.parse(raw) as StoreShape;
     return {
       seeded: Boolean(parsed.seeded),
-      games: Array.isArray(parsed.games) ? parsed.games : [],
+      games: Array.isArray(parsed.games) ? parsed.games.map(normalizeGame) : [],
       rsvps: Array.isArray(parsed.rsvps) ? parsed.rsvps : [],
       lineups: parsed.lineups ?? {},
     };
@@ -71,6 +76,13 @@ function validateName(name: string): string {
     throw new RepositoryError('invalid_name', 'Please enter a name between 1 and 40 characters.');
   }
   return clean;
+}
+
+function validateColor(teamColor: string): string {
+  if (!isValidHexColor(teamColor)) {
+    throw new RepositoryError('invalid_color', 'Choose a valid team color.');
+  }
+  return normalizeHexColor(teamColor);
 }
 
 function publicView(rsvp: StoredRsvp): PublicRsvp {
@@ -100,6 +112,7 @@ export class DemoRepository implements Repository {
       matchDate,
       matchTime: '19:30',
       venue: 'Central Park Pitch 3',
+      teamColor: '#000000',
       isOpen: true,
       createdAt: now.toISOString(),
     };
@@ -183,10 +196,29 @@ export class DemoRepository implements Repository {
       matchDate: input.matchDate,
       matchTime: input.matchTime,
       venue: normalizeName(input.venue),
+      teamColor: validateColor(input.teamColor),
       isOpen: true,
       createdAt: new Date().toISOString(),
     };
     store.games.push(game);
+    saveStore(store);
+    return game;
+  }
+
+  async updateGame(id: string, input: GameInput): Promise<Game> {
+    this.requireSession();
+    await this.ensureSeeded();
+    const opponent = validateName(input.opponent);
+    if (!input.matchDate) throw new RepositoryError('invalid_date', 'Match date is required.');
+    const teamColor = validateColor(input.teamColor);
+    const store = loadStore();
+    const game = store.games.find((g) => g.id === id);
+    if (!game) throw new RepositoryError('not_found', 'Game not found.');
+    game.opponent = opponent;
+    game.matchDate = input.matchDate;
+    game.matchTime = input.matchTime;
+    game.venue = normalizeName(input.venue);
+    game.teamColor = teamColor;
     saveStore(store);
     return game;
   }

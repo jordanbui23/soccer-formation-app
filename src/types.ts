@@ -15,6 +15,7 @@ export interface Game {
   matchDate: string;
   matchTime: string;
   venue: string;
+  teamColor: string;
   isOpen: boolean;
   createdAt: string;
 }
@@ -24,6 +25,7 @@ export interface GameInput {
   matchDate: string;
   matchTime: string;
   venue: string;
+  teamColor: string;
 }
 
 export interface Rsvp {

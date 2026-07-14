@@ -29,6 +29,7 @@ export interface Repository {
 
   listGames(): Promise<Game[]>;
   createGame(input: GameInput): Promise<Game>;
+  updateGame(id: string, input: GameInput): Promise<Game>;
   getGameById(id: string): Promise<Game | null>;
   setGameOpen(id: string, isOpen: boolean): Promise<Game>;
 
