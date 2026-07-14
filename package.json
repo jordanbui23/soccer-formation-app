@@ -1,0 +1,25 @@
+{
+  "name": "matchday-board",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Match-day board: public RSVP links and authenticated lineup management for 11v11 soccer.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "html-to-image": "^1.11.11",
+    "jspdf": "^2.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^4.5.5",
+    "vitest": "^0.34.6"
+  }
+}
