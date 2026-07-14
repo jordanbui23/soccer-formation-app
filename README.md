@@ -1,137 +1,127 @@
-# Soccer Formation Builder
+# Match-day Board
 
-A browser-based tool for creating 11v11 soccer formations, managing rosters, and exporting lineup sheets as PNG or PDF. No install, no accounts, no server — just open and go.
+An editorial match-day board for grassroots 11v11 football. Share a public RSVP link
+in your team chat, watch replies land in real time, then build the starting XI on a
+drag-and-drop tactics board and export it as PNG or PDF.
 
-**Live demo:** [https://jordanbui23.github.io/soccer-formation-app/](https://jordanbui23.github.io/soccer-formation-app/)
+Built with **Vite + vanilla TypeScript** (no frontend framework), **@supabase/supabase-js**,
+**html-to-image**, **jspdf**, and **Vitest**.
 
-## How to Run
+## Two ways to run
 
-No build step, no dependencies, no server required. It's a single HTML file.
+The app auto-selects its backend at startup:
 
-**Option 1: Live site**
+| Condition | Backend | Notes |
+|-----------|---------|-------|
+| `VITE_SUPABASE_URL` **and** `VITE_SUPABASE_ANON_KEY` set | Supabase | Production: real auth, row level security, secure RSVP RPCs |
+| either missing/empty | Demo | Local-only `localStorage`, seeded data, **not secure** |
 
-Visit [https://jordanbui23.github.io/soccer-formation-app/](https://jordanbui23.github.io/soccer-formation-app/) in any modern browser.
-
-**Option 2: Run locally**
+### Demo mode (default, zero config)
 
 ```bash
-git clone https://github.com/jordanbui23/soccer-formation-app.git
-open soccer-formation-app/index.html
+npm install
+npm run dev
 ```
 
-Or just download `index.html` and double-click it.
+Open the printed URL. Demo mode seeds an admin and a sample game, and the login screen
+pre-fills the seeded credentials:
 
-## Features
+- **Email:** `coach@matchday.local`
+- **Password:** `matchday-demo`
 
-### Formations
+Everything (games, RSVPs, lineups) persists in your browser's `localStorage`. Public
+share links resolve on the same origin, and the private per-RSVP edit link works exactly
+as it does in production. Demo mode is a local sandbox and makes **no security guarantees**.
 
-8 preset formations for 11v11:
+### Production mode (Supabase)
 
-| Formation | Shape |
-|-----------|-------|
-| 4-4-2 | Classic flat four midfield, two strikers |
-| 4-3-3 | Three in midfield, front three with wingers |
-| 3-5-2 | Three at the back, packed midfield, two strikers |
-| 4-2-3-1 | Double pivot, attacking three behind a lone striker |
-| 4-5-1 | Five across midfield, lone striker |
-| 3-4-3 | Three at back, four midfield, front three |
-| 4-1-4-1 | Single holding mid, four attacking midfielders |
-| 4-4-1-1 | Flat four midfield, #10 behind a striker |
+1. Create a Supabase project.
+2. Run the migration in `supabase/migrations/0001_init.sql` (SQL editor or `supabase db push`).
+   It creates the tables, row level security policies, the safe `public_rsvps` view, and the
+   `create_rsvp` / `get_rsvp_for_edit` / `update_rsvp` RPCs.
+3. Provision an admin: create a user in **Supabase Auth**. Any authenticated user can create
+   and own games; ownership is enforced by RLS.
+4. Copy `.env.example` to `.env` and fill in:
 
-Select a formation from the dropdown and players snap to the correct positions automatically.
+   ```
+   VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+   VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY
+   ```
 
-### Roster Management
+Only the public **anon** key is used client-side. The service-role key is never referenced.
 
-- **Add players** — Enter a name, select a position, hit Enter. First 11 are automatically starters.
-- **Flexible size** — Add as many players as you want. No cap on roster size.
-- **Change position anytime** — Every player has an inline dropdown to change their position after being added.
-- **Toggle starter/sub** — Click "→Sub" or "→Start" to move players between the starting XI and the bench.
-- **Remove players** — Click the × button to remove from the roster entirely.
-- **Subs organized by group** — Substitutes are grouped in the sidebar by position type (GK / DEF / MID / FWD).
+## Scripts
 
-### Positions Available
+```bash
+npm run dev        # start the dev server
+npm run build      # type-check then production build to dist/
+npm run preview    # preview the production build
+npm test           # run the Vitest unit suite
+```
 
-| Group | Positions |
-|-------|-----------|
-| Goalkeeper | GK |
-| Defenders | CB, LCB, RCB, LB, RB, LWB, RWB |
-| Midfielders | CDM, CM, CAM, LM, RM |
-| Forwards | LW, RW, CF, ST |
+## Routes
 
-### Smart Position Snapping
+URL routing is handled by the History API, no routing dependency.
 
-When you add a player, they automatically snap to the correct formation slot based on their position:
+| Route | Purpose |
+|-------|---------|
+| `/` | redirects to `/admin` |
+| `/admin` | admin login, or the game list when signed in |
+| `/admin/games/:id` | RSVP management + tactics board for one game |
+| `/game/:slug` | public game page: match details, roster, RSVP form |
+| `/game/:slug/edit/:rsvpId#token=…` | private RSVP edit link |
 
-- A player listed as **RCB** snaps to a **CB** slot on the right side
-- A player listed as **LW** snaps to the **left wing** slot
-- A player listed as **CDM** snaps to a **CM/CDM** slot
+The edit token travels in the URL **fragment** (`#token=…`), which browsers never send to
+the server, so it stays out of request logs. `netlify.toml` and `public/_redirects` provide
+the SPA fallback so deep links resolve on Netlify.
 
-If no matching slot is available (e.g. you add an LM in a 4-3-3 which has no LM slot), the player fills the next available slot.
+## How RSVP editing stays private
 
-Changing a player's position via the dropdown re-snaps them to their new correct slot.
+- Edit tokens are generated with a CSPRNG (32 random bytes).
+- Only a **SHA-256 hash** of the token is stored; the plaintext is shown to the player once.
+- In Supabase mode, creation is a `SECURITY DEFINER` RPC: the database generates the token,
+  so a client can neither submit an arbitrary hash nor bypass the game-open check. Updates go
+  through an RPC that re-hashes the supplied token and compares server-side.
+- The public only ever reads the `public_rsvps` projection (id, name, status). The
+  `edit_token_hash` column is never exposed.
+- All `SECURITY DEFINER` functions set `search_path = ''`, fully qualify every reference,
+  validate the trimmed name and allowed status, check the game-open state, and are granted
+  execute only to `anon`/`authenticated` after revoking the default `PUBLIC` grant.
 
-### Drag & Drop
+## Lineup model
 
-- **Nudge players** — Drag any player token on the field to fine-tune their position.
-- **Swap players** — Drag a player close to another player (within ~50 pixels) and they swap formation positions. This lets you quickly rearrange who plays where without editing the roster.
-- **Drop in open space** — If you drop a player away from others, they stay at that custom position.
+Per-game lineup state is stored compactly:
 
-### Color-Coded Tokens
+```ts
+interface LineupState {
+  formation: string;
+  players: { id; name; pos; starter; manual; rsvpId }[];
+  customPositions: Record<playerId, { x; y }>;
+  slotOverrides: Record<playerId, slotIndex>;
+}
+```
 
-Player tokens on the field are color-coded by position group:
+A player who replies **Yes** is added once as an unassigned substitute. Changing away from Yes
+removes that player (and clears their placement) without touching manually added players. Admin
+name edits flow through to the linked lineup player. All of this lives in pure functions in
+`src/lineup.ts` and is covered by the test suite.
 
-- 🟠 **Orange** — Goalkeeper
-- 🔵 **Blue** — Defenders
-- 🟢 **Green** — Midfielders
-- 🔴 **Red** — Forwards
+## Formations
 
-A legend is displayed below the formation dropdown for reference.
+All eight preset formations from the original build are preserved with identical coordinates:
+`4-4-2`, `4-3-3`, `3-5-2`, `4-2-3-1`, `4-5-1`, `3-4-3`, `4-1-4-1`, `4-4-1-1`. Players snap to
+compatible slots, can be dragged to nudge, dropped onto a teammate to swap, or nudged with the
+keyboard (focus a token, use the arrow keys). Max 11 starters is enforced.
 
-### Export (PNG & PDF)
+## Deploy to Netlify
 
-Click "Export PNG" or "Export PDF" to download a lineup sheet that includes:
+Build command `npm run build`, publish directory `dist`. `netlify.toml` already configures the
+SPA redirect and a few security headers. Set the two `VITE_SUPABASE_*` environment variables in
+the Netlify UI for production; leave them unset to ship the demo sandbox.
 
-1. **Field diagram** — The pitch with all player tokens in position (names visible)
-2. **Starting XI table** — Grouped by specific position (e.g. "CM: Player A, Player B" on one row)
-3. **Substitutes table** — Same grouping by specific position
+## Tech notes
 
-The export is designed to be print-friendly on a white background.
-
-### Save & Load Rosters
-
-- **Save** — Type a name in the "Save / Load" section and click Save. Your entire roster, formation selection, and custom player positions are stored.
-- **Load** — Click "Load" next to any saved roster to restore it.
-- **Delete** — Click × to remove a saved roster.
-- **Multiple rosters** — Save as many different lineups as you want (e.g. "Game Day vs Eagles", "Practice 4-3-3", "B Team").
-
-## Data Storage
-
-All data is stored in your browser's **localStorage**. This means:
-
-| Scenario | What happens |
-|----------|--------------|
-| Close browser and reopen | Saved rosters are still there |
-| Restart your computer | Saved rosters are still there |
-| Clear browser data / cookies | Rosters are deleted |
-| Different browser on same machine | Starts fresh (separate localStorage) |
-| Different machine | Starts fresh |
-| Use the GitHub Pages live URL | Persists in that browser on that machine |
-
-**There is no cloud sync or server-side storage.** Each browser on each machine has its own independent set of saved rosters. Use the PNG/PDF export to take lineups with you or share them.
-
-**Unsaved work is lost** — if you add players but don't click "Save" before closing the tab, that session's changes are gone. Always save before closing.
-
-## Tech Stack
-
-- **Single HTML file** — no build step, no `npm install`, no bundler
-- **Vanilla JavaScript** — no React, Vue, or any framework
-- **SVG** — the soccer field is rendered as inline SVG
-- **[jsPDF](https://github.com/parallax/jsPDF)** (loaded via CDN) — generates PDF files
-- **[html-to-image](https://github.com/bubkoo/html-to-image)** (loaded via CDN) — captures the DOM as a PNG for export
-- **localStorage** — browser-native key/value storage for roster persistence
-
-The two CDN dependencies (jsPDF and html-to-image) are loaded automatically when you open the page. An internet connection is needed for the first load; after that, your browser may cache them.
-
-## Browser Support
-
-Works in any modern desktop browser (Chrome, Firefox, Safari, Edge). Not optimized for mobile/tablet — this is designed for laptop use.
+- Player names are always written to the DOM as text nodes, never interpolated into `innerHTML`.
+- `prefers-reduced-motion` disables animations and spinners.
+- Accessible labels, radio groups, visible focus rings, and `aria-busy`/`aria-live` status
+  messaging are used throughout.
