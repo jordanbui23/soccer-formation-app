@@ -36,9 +36,13 @@ as it does in production. Demo mode is a local sandbox and makes **no security g
 ### Production mode (Supabase)
 
 1. Create a Supabase project.
-2. Run the migration in `supabase/migrations/0001_init.sql` (SQL editor or `supabase db push`).
-   It creates the tables, row level security policies, the safe `public_rsvps` view, and the
-   `create_rsvp` / `get_rsvp_for_edit` / `update_rsvp` RPCs.
+2. Run the migrations in `supabase/migrations/` in order (SQL editor or `supabase db push`):
+   - `0001_init.sql` creates the tables, row level security policies, the safe `public_rsvps`
+     view, and the `create_rsvp` / `get_rsvp_for_edit` / `update_rsvp` RPCs.
+   - `0002_add_team_color.sql` adds the per-game `team_color` column. It is additive and
+     non-destructive: existing rows are backfilled with home black (`#000000`) and a regex
+     check constrains the value to a strict `#RRGGBB` hex string. The migration is idempotent,
+     so re-running it against an already-migrated database is a no-op.
 3. Provision an admin: create a user in **Supabase Auth**. Any authenticated user can create
    and own games; ownership is enforced by RLS.
 4. Copy `.env.example` to `.env` and fill in:
