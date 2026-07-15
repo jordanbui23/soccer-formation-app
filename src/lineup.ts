@@ -1,5 +1,5 @@
 import type { Coord, LineupPlayer, LineupState } from './types';
-import { DEFAULT_POSITION } from './formations';
+import { ALL_POSITIONS, DEFAULT_POSITION } from './formations';
 
 export const MAX_STARTERS = 11;
 export const MAX_NAME_LENGTH = 40;
@@ -8,6 +8,11 @@ export const MIN_NAME_LENGTH = 1;
 export interface YesRsvpRef {
   id: string;
   name: string;
+  preferredPosition?: string | null;
+}
+
+function positionFor(preferred: string | null | undefined): string {
+  return preferred && ALL_POSITIONS.includes(preferred) ? preferred : DEFAULT_POSITION;
 }
 
 export function normalizeName(raw: string): string {
@@ -80,7 +85,7 @@ export function reconcileLineup(state: LineupState, yesRsvps: YesRsvpRef[]): Lin
     next.players.push({
       id: `rsvp-${rsvp.id}`,
       name: rsvp.name,
-      pos: DEFAULT_POSITION,
+      pos: positionFor(rsvp.preferredPosition),
       starter: false,
       manual: false,
       rsvpId: rsvp.id,

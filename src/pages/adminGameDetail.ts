@@ -10,7 +10,9 @@ import { reconcileLineup, type YesRsvpRef } from '../lineup';
 import { LineupEditor } from '../lineupEditor';
 
 function yesRefs(rsvps: Rsvp[]): YesRsvpRef[] {
-  return rsvps.filter((r) => r.status === 'yes').map((r) => ({ id: r.id, name: r.name }));
+  return rsvps
+    .filter((r) => r.status === 'yes')
+    .map((r) => ({ id: r.id, name: r.name, preferredPosition: r.preferredPosition }));
 }
 
 function shareUrl(game: Game): string {

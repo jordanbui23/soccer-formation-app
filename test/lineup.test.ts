@@ -83,6 +83,27 @@ describe('reconcileLineup', () => {
     expect(after.players[0].pos).toBe('ST');
     expect(after.players[0].starter).toBe(true);
   });
+
+  it('adds a new Yes RSVP at its preferred position', () => {
+    const state = reconcileLineup(base(), [{ id: 'r1', name: 'Alex', preferredPosition: 'RW' }]);
+    expect(state.players[0].pos).toBe('RW');
+  });
+
+  it('falls back to the default position for a missing or invalid preferred position', () => {
+    const missing = reconcileLineup(base(), [{ id: 'r1', name: 'Alex' }]);
+    expect(missing.players[0].pos).toBe('CM');
+    const invalid = reconcileLineup(base(), [{ id: 'r2', name: 'Sam', preferredPosition: 'BOSS' }]);
+    expect(invalid.players[0].pos).toBe('CM');
+  });
+
+  it('does not overwrite a coach position edit when the preferred position differs on re-sync', () => {
+    const yes: YesRsvpRef[] = [{ id: 'r1', name: 'Alex', preferredPosition: 'RW' }];
+    let state = reconcileLineup(base(), yes);
+    expect(state.players[0].pos).toBe('RW');
+    state = changePosition(state, state.players[0].id, 'ST');
+    const after = reconcileLineup(state, yes);
+    expect(after.players[0].pos).toBe('ST');
+  });
 });
 
 describe('starter management', () => {
