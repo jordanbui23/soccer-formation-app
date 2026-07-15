@@ -32,6 +32,9 @@ export interface Rsvp {
   id: string;
   gameId: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+  preferredPosition: string | null;
   status: RsvpStatus;
   createdAt: string;
   updatedAt: string;
@@ -40,6 +43,16 @@ export interface Rsvp {
 export interface PublicRsvp {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+  preferredPosition: string | null;
+  status: RsvpStatus;
+}
+
+export interface RsvpInput {
+  firstName: string;
+  lastName: string;
+  preferredPosition: string;
   status: RsvpStatus;
 }
 
@@ -51,6 +64,9 @@ export interface CreatedRsvp {
 export interface EditableRsvp {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+  preferredPosition: string | null;
   status: RsvpStatus;
 }
 
