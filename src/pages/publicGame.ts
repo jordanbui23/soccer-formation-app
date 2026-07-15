@@ -1,6 +1,7 @@
 import type { Game, PublicRsvp, RsvpStatus } from '../types';
 import { RSVP_STATUSES, STATUS_LABEL } from '../types';
 import { getRepository } from '../data';
+import { forgetRsvp, getRememberedRsvp, rememberRsvp } from '../rememberedRsvp';
 import { el } from '../dom';
 import { navigate } from '../router';
 import { notify, errorMessage } from '../ui/toast';
@@ -98,8 +99,12 @@ function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, name: s
   return form;
 }
 
+function editRouteFor(game: Game, rsvpId: string, token: string): string {
+  return `/game/${encodeURIComponent(game.slug)}/edit/${encodeURIComponent(rsvpId)}#token=${token}`;
+}
+
 function editLinkFor(game: Game, rsvpId: string, token: string): string {
-  return `${location.origin}/game/${encodeURIComponent(game.slug)}/edit/${encodeURIComponent(rsvpId)}#token=${token}`;
+  return `${location.origin}${editRouteFor(game, rsvpId, token)}`;
 }
 
 function createdCallout(game: Game, rsvpId: string, token: string, name: string): HTMLElement {
@@ -113,9 +118,7 @@ function createdCallout(game: Game, rsvpId: string, token: string, name: string)
     );
   });
   const editNow = el('button', { type: 'button', class: 'btn-ghost btn-block' }, ['Edit my RSVP now']);
-  editNow.addEventListener('click', () =>
-    navigate(`/game/${encodeURIComponent(game.slug)}/edit/${encodeURIComponent(rsvpId)}#token=${token}`),
-  );
+  editNow.addEventListener('click', () => navigate(editRouteFor(game, rsvpId, token)));
 
   return el('div', { class: 'token-callout section-gap' }, [
     el('p', {}, [`Thanks, ${name}! Your reply is saved.`]),
@@ -146,6 +149,26 @@ export async function publicGamePage(slug: string): Promise<void> {
   const counts = countByStatus(rsvps);
   const currentGame = game;
 
+  const remembered = getRememberedRsvp(currentGame.id);
+  if (remembered && !rsvps.some((r) => r.id === remembered.rsvpId)) {
+    forgetRsvp(currentGame.id);
+  }
+  const rememberedEdit = getRememberedRsvp(currentGame.id);
+
+  const rememberedEditButton = (): HTMLElement | null => {
+    if (!rememberedEdit) return null;
+    const btn = el('button', { type: 'button', class: 'btn-accent btn-block' }, ['Edit your RSVP']);
+    btn.addEventListener('click', () =>
+      navigate(editRouteFor(currentGame, rememberedEdit.rsvpId, rememberedEdit.token)),
+    );
+    return el('div', { class: 'section-gap' }, [
+      btn,
+      el('p', { style: 'font-size:0.85rem;opacity:0.85;margin-top:8px;' }, [
+        'We remembered your reply on this device. You can still use your private link on other devices.',
+      ]),
+    ]);
+  };
+
   const rsvpPanel = el('div', { class: 'card__body section-gap' });
   const rebuildRsvpPanel = () => {
     if (!currentGame.isOpen) {
@@ -157,9 +180,12 @@ export async function publicGamePage(slug: string): Promise<void> {
       );
       return;
     }
+    const editBlock = rememberedEditButton();
     rsvpPanel.replaceChildren(
       el('h2', { class: 'card__title' }, ["Can you make it?"]),
+      ...(editBlock ? [editBlock] : []),
       rsvpForm(currentGame, (rsvpId, token, name) => {
+        rememberRsvp(currentGame.id, rsvpId, token);
         rsvpPanel.replaceChildren(
           el('h2', { class: 'card__title' }, ['You are in']),
           createdCallout(currentGame, rsvpId, token, name),
