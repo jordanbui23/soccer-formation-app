@@ -1,29 +1,30 @@
 :root {
-  --c-ink: #16181d;
-  --c-ink-soft: #23272f;
-  --c-ink-line: #313742;
+  --c-ink: #2c2118;
+  --c-ink-soft: #3a2e1f;
+  --c-ink-line: #4a3b29;
   --c-pitch: #1a7a45;
   --c-pitch-deep: #0f5730;
   --c-pitch-line: rgba(255, 255, 255, 0.92);
-  --c-paper: #f3ede1;
-  --c-paper-deep: #e8dfcd;
-  --c-card: #fffdf8;
-  --c-card-line: #e2d8c4;
-  --c-accent: #ef5a25;
-  --c-accent-deep: #c8420f;
-  --c-accent-ink: #fff6f1;
+  --c-paper: #fefae0;
+  --c-paper-deep: #faedcd;
+  --c-card: #fffdf5;
+  --c-card-line: #e7d8bc;
+  --c-accent: #d4a373;
+  --c-accent-deep: #a5754a;
+  --c-accent-text: #855b32;
+  --c-accent-ink: #3a2e1f;
 
-  --c-text: #1b1e24;
-  --c-text-soft: #5c6270;
-  --c-text-faint: #8a8f9c;
-  --c-text-invert: #f6f1e7;
+  --c-text: #3a2e1f;
+  --c-text-soft: #6b5638;
+  --c-text-faint: #7e6540;
+  --c-text-invert: #fefae0;
 
   --c-yes: #1f8a4c;
-  --c-yes-bg: #e4f4e9;
+  --c-yes-bg: #e8f0d2;
   --c-maybe: #d0851d;
-  --c-maybe-bg: #f8eed7;
+  --c-maybe-bg: #faedcd;
   --c-no: #b23a48;
-  --c-no-bg: #f6e4e6;
+  --c-no-bg: #f6e3d5;
 
   --c-focus: #2f6df6;
   --c-danger: #b23a48;
@@ -59,9 +60,9 @@
   --r-lg: 14px;
   --r-pill: 999px;
 
-  --sh-1: 0 1px 2px rgba(22, 24, 29, 0.08);
-  --sh-2: 0 4px 16px rgba(22, 24, 29, 0.12);
-  --sh-3: 0 12px 40px rgba(22, 24, 29, 0.22);
+  --sh-1: 0 1px 2px rgba(58, 46, 31, 0.08);
+  --sh-2: 0 4px 16px rgba(58, 46, 31, 0.12);
+  --sh-3: 0 12px 40px rgba(58, 46, 31, 0.22);
 
   --ring: 0 0 0 3px rgba(47, 109, 246, 0.45);
   --tr-fast: 120ms ease;
