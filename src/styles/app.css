@@ -401,8 +401,34 @@ button:active:not(:disabled) {
   color: var(--c-text);
   border: 1.5px solid var(--c-card-line);
 }
+a.btn-ghost {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-body);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: var(--r-md);
+  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  text-decoration: none;
+}
+a.btn-ghost.btn-sm {
+  padding: 6px 10px;
+  font-size: var(--fs-small);
+}
 .btn-ghost:hover:not(:disabled) {
   border-color: var(--c-ink);
+}
+.topbar .btn-ghost {
+  color: var(--c-text-invert);
+  border-color: rgba(246, 241, 231, 0.4);
+}
+.topbar .btn-ghost:hover:not(:disabled) {
+  border-color: var(--c-text-invert);
+  background: rgba(246, 241, 231, 0.1);
 }
 .btn-danger {
   background: var(--c-danger);
