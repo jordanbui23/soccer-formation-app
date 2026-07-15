@@ -109,14 +109,36 @@ export function assignSlots(
     }
   });
 
-  starters.forEach((_player, playerIdx) => {
+  starters.forEach((player, playerIdx) => {
     if (assigned.has(playerIdx)) return;
+    const group = positionGroup(player.pos);
     for (let i = 0; i < slotCount; i++) {
-      if (slots[i] === null) {
+      if (slots[i] !== null) continue;
+      if (positionGroup(formation.positions[i]) === group) {
         slots[i] = playerIdx;
         assigned.add(playerIdx);
         return;
       }
+    }
+  });
+
+  starters.forEach((player, playerIdx) => {
+    if (assigned.has(playerIdx)) return;
+    const avoidGk = positionGroup(player.pos) !== 'GK';
+    let fallbackSlot = -1;
+    for (let i = 0; i < slotCount; i++) {
+      if (slots[i] !== null) continue;
+      if (avoidGk && positionGroup(formation.positions[i]) === 'GK') {
+        if (fallbackSlot === -1) fallbackSlot = i;
+        continue;
+      }
+      slots[i] = playerIdx;
+      assigned.add(playerIdx);
+      return;
+    }
+    if (fallbackSlot !== -1) {
+      slots[fallbackSlot] = playerIdx;
+      assigned.add(playerIdx);
     }
   });
 

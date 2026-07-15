@@ -70,6 +70,28 @@ describe('assignSlots', () => {
     expect(result[0]).toBeLessThan(11);
   });
 
+  it('sends a third CM to a midfield slot, never defense', () => {
+    const result = assignSlots('4-4-2', starters([['a', 'CM'], ['b', 'CM'], ['c', 'CM']]), {});
+    const thirdSlot = result[2];
+    expect(positionGroup(FORMATIONS['4-4-2'].positions[thirdSlot])).toBe('MID');
+  });
+
+  it('never drops an overflow forward onto the empty GK slot', () => {
+    const result = assignSlots('4-4-2', starters([['a', 'ST'], ['b', 'ST'], ['c', 'ST']]), {});
+    for (const slot of result) {
+      expect(positionGroup(FORMATIONS['4-4-2'].positions[slot])).not.toBe('GK');
+    }
+  });
+
+  it('still uses the GK slot as a last resort when it is the only free slot', () => {
+    const outfield = FORMATIONS['4-4-2'].positions
+      .slice(1)
+      .map((pos, i) => [`p${i}`, pos] as [string, string]);
+    const result = assignSlots('4-4-2', starters([...outfield, ['extra', 'ST']]), {});
+    expect(new Set(result).size).toBe(11);
+    expect(result).toContain(0);
+  });
+
   it('assigns unique slots to a full XI', () => {
     const eleven = starters(
       FORMATIONS['4-4-2'].positions.map((pos, i) => [`p${i}`, pos] as [string, string]),
