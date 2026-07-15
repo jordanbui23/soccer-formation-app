@@ -7,12 +7,15 @@ import type {
   LineupState,
   PublicRsvp,
   Rsvp,
+  RsvpInput,
   RsvpStatus,
 } from '../types';
 import { RSVP_STATUSES } from '../types';
 import { generateEditToken, hashToken, newId, timingSafeEqual } from '../crypto';
 import { isValidName, normalizeName } from '../lineup';
 import { isValidHexColor, normalizeHexColor } from '../color';
+import { ALL_POSITIONS } from '../formations';
+import { splitFullName } from '../rsvpName';
 import { Repository, RepositoryError } from './repository';
 import { slugify } from './config';
 
@@ -44,6 +47,15 @@ function normalizeGame(game: Game): Game {
   return { ...game, teamColor: normalizeHexColor(game.teamColor) };
 }
 
+function normalizeStoredRsvp(rsvp: StoredRsvp): StoredRsvp {
+  return {
+    ...rsvp,
+    firstName: rsvp.firstName ?? null,
+    lastName: rsvp.lastName ?? null,
+    preferredPosition: rsvp.preferredPosition ?? null,
+  };
+}
+
 function loadStore(): StoreShape {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -52,7 +64,7 @@ function loadStore(): StoreShape {
     return {
       seeded: Boolean(parsed.seeded),
       games: Array.isArray(parsed.games) ? parsed.games.map(normalizeGame) : [],
-      rsvps: Array.isArray(parsed.rsvps) ? parsed.rsvps : [],
+      rsvps: Array.isArray(parsed.rsvps) ? parsed.rsvps.map(normalizeStoredRsvp) : [],
       lineups: parsed.lineups ?? {},
     };
   } catch {
@@ -85,8 +97,46 @@ function validateColor(teamColor: string): string {
   return normalizeHexColor(teamColor);
 }
 
+interface CleanRsvpInput {
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  preferredPosition: string;
+  status: RsvpStatus;
+}
+
+function validateRsvpInput(input: RsvpInput): CleanRsvpInput {
+  validateStatus(input.status);
+  const firstName = normalizeName(input.firstName);
+  if (!isValidName(firstName)) {
+    throw new RepositoryError('invalid_name', 'Please enter a first name between 1 and 40 characters.');
+  }
+  const lastRaw = normalizeName(input.lastName ?? '');
+  if (lastRaw.length > 40) {
+    throw new RepositoryError('invalid_name', 'Last name must be 40 characters or fewer.');
+  }
+  if (!ALL_POSITIONS.includes(input.preferredPosition)) {
+    throw new RepositoryError('invalid_position', 'Choose a valid position.');
+  }
+  const composed = lastRaw ? `${firstName} ${lastRaw}` : firstName;
+  return {
+    name: composed.slice(0, 40),
+    firstName,
+    lastName: lastRaw || null,
+    preferredPosition: input.preferredPosition,
+    status: input.status,
+  };
+}
+
 function publicView(rsvp: StoredRsvp): PublicRsvp {
-  return { id: rsvp.id, name: rsvp.name, status: rsvp.status };
+  return {
+    id: rsvp.id,
+    name: rsvp.name,
+    firstName: rsvp.firstName,
+    lastName: rsvp.lastName,
+    preferredPosition: rsvp.preferredPosition,
+    status: rsvp.status,
+  };
 }
 
 function adminView(rsvp: StoredRsvp): Rsvp {
@@ -117,23 +167,26 @@ export class DemoRepository implements Repository {
       createdAt: now.toISOString(),
     };
 
-    const seedNames: Array<[string, RsvpStatus]> = [
-      ['Alex Morgan', 'yes'],
-      ['Sam Kerr', 'yes'],
-      ['Jordan Pike', 'yes'],
-      ['Riley Chen', 'yes'],
-      ['Casey Njoku', 'maybe'],
-      ['Devin Park', 'no'],
-      ['Morgan Ellis', 'yes'],
+    const seedPlayers: Array<[string, string, string, RsvpStatus]> = [
+      ['Alex', 'Morgan', 'ST', 'yes'],
+      ['Sam', 'Kerr', 'ST', 'yes'],
+      ['Jordan', 'Pike', 'CB', 'yes'],
+      ['Riley', 'Chen', 'CM', 'yes'],
+      ['Casey', 'Njoku', 'GK', 'maybe'],
+      ['Devin', 'Park', 'LB', 'no'],
+      ['Morgan', 'Ellis', 'RW', 'yes'],
     ];
 
     const rsvps: StoredRsvp[] = [];
-    for (const [name, status] of seedNames) {
+    for (const [firstName, lastName, preferredPosition, status] of seedPlayers) {
       const token = generateEditToken();
       rsvps.push({
         id: newId(),
         gameId: game.id,
-        name,
+        name: `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        preferredPosition,
         status,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
@@ -252,10 +305,9 @@ export class DemoRepository implements Repository {
       .map(publicView);
   }
 
-  async createRsvp(gameId: string, name: string, status: RsvpStatus): Promise<CreatedRsvp> {
+  async createRsvp(gameId: string, input: RsvpInput): Promise<CreatedRsvp> {
     await this.ensureSeeded();
-    validateStatus(status);
-    const clean = validateName(name);
+    const clean = validateRsvpInput(input);
     const store = loadStore();
     const game = store.games.find((g) => g.id === gameId);
     if (!game) throw new RepositoryError('not_found', 'Game not found.');
@@ -266,8 +318,11 @@ export class DemoRepository implements Repository {
     const rsvp: StoredRsvp = {
       id: newId(),
       gameId,
-      name: clean,
-      status,
+      name: clean.name,
+      firstName: clean.firstName,
+      lastName: clean.lastName,
+      preferredPosition: clean.preferredPosition,
+      status: clean.status,
       createdAt: nowIso,
       updatedAt: nowIso,
       editTokenHash: await hashToken(token),
@@ -289,18 +344,19 @@ export class DemoRepository implements Repository {
     await this.ensureSeeded();
     const rsvp = await this.findByToken(rsvpId, token);
     if (!rsvp) return null;
-    return { id: rsvp.id, name: rsvp.name, status: rsvp.status };
+    return {
+      id: rsvp.id,
+      name: rsvp.name,
+      firstName: rsvp.firstName,
+      lastName: rsvp.lastName,
+      preferredPosition: rsvp.preferredPosition,
+      status: rsvp.status,
+    };
   }
 
-  async updateRsvpByToken(
-    rsvpId: string,
-    token: string,
-    name: string,
-    status: RsvpStatus,
-  ): Promise<EditableRsvp> {
+  async updateRsvpByToken(rsvpId: string, token: string, input: RsvpInput): Promise<EditableRsvp> {
     await this.ensureSeeded();
-    validateStatus(status);
-    const clean = validateName(name);
+    const clean = validateRsvpInput(input);
     const store = loadStore();
     const rsvp = store.rsvps.find((r) => r.id === rsvpId);
     if (!rsvp) throw new RepositoryError('not_found', 'RSVP not found.');
@@ -312,11 +368,21 @@ export class DemoRepository implements Repository {
     if (!game || !game.isOpen) {
       throw new RepositoryError('game_closed', 'RSVPs are closed for this game.');
     }
-    rsvp.name = clean;
-    rsvp.status = status;
+    rsvp.name = clean.name;
+    rsvp.firstName = clean.firstName;
+    rsvp.lastName = clean.lastName;
+    rsvp.preferredPosition = clean.preferredPosition;
+    rsvp.status = clean.status;
     rsvp.updatedAt = new Date().toISOString();
     saveStore(store);
-    return { id: rsvp.id, name: rsvp.name, status: rsvp.status };
+    return {
+      id: rsvp.id,
+      name: rsvp.name,
+      firstName: rsvp.firstName,
+      lastName: rsvp.lastName,
+      preferredPosition: rsvp.preferredPosition,
+      status: rsvp.status,
+    };
   }
 
   async listRsvps(gameId: string): Promise<Rsvp[]> {
@@ -335,7 +401,10 @@ export class DemoRepository implements Repository {
     const store = loadStore();
     const rsvp = store.rsvps.find((r) => r.id === rsvpId);
     if (!rsvp) throw new RepositoryError('not_found', 'RSVP not found.');
+    const parts = splitFullName(clean);
     rsvp.name = clean;
+    rsvp.firstName = parts.firstName;
+    rsvp.lastName = parts.lastName;
     rsvp.status = status;
     rsvp.updatedAt = new Date().toISOString();
     saveStore(store);

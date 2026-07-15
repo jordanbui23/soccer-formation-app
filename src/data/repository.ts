@@ -7,6 +7,7 @@ import type {
   LineupState,
   PublicRsvp,
   Rsvp,
+  RsvpInput,
   RsvpStatus,
 } from '../types';
 
@@ -36,14 +37,9 @@ export interface Repository {
   getGameBySlug(slug: string): Promise<Game | null>;
 
   listPublicRsvps(gameId: string): Promise<PublicRsvp[]>;
-  createRsvp(gameId: string, name: string, status: RsvpStatus): Promise<CreatedRsvp>;
+  createRsvp(gameId: string, input: RsvpInput): Promise<CreatedRsvp>;
   getRsvpForEdit(rsvpId: string, token: string): Promise<EditableRsvp | null>;
-  updateRsvpByToken(
-    rsvpId: string,
-    token: string,
-    name: string,
-    status: RsvpStatus,
-  ): Promise<EditableRsvp>;
+  updateRsvpByToken(rsvpId: string, token: string, input: RsvpInput): Promise<EditableRsvp>;
 
   listRsvps(gameId: string): Promise<Rsvp[]>;
   updateRsvpAdmin(rsvpId: string, name: string, status: RsvpStatus): Promise<Rsvp>;

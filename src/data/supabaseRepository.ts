@@ -8,11 +8,14 @@ import type {
   LineupState,
   PublicRsvp,
   Rsvp,
+  RsvpInput,
   RsvpStatus,
 } from '../types';
 import { RSVP_STATUSES } from '../types';
 import { isValidName, normalizeName } from '../lineup';
 import { isValidHexColor, normalizeHexColor } from '../color';
+import { ALL_POSITIONS } from '../formations';
+import { splitFullName } from '../rsvpName';
 import { Repository, RepositoryError } from './repository';
 
 interface GameRow {
@@ -31,13 +34,16 @@ interface RsvpRow {
   id: string;
   game_id: string;
   name: string;
+  first_name: string | null;
+  last_name: string | null;
+  preferred_position: string | null;
   status: RsvpStatus;
   created_at: string;
   updated_at: string;
 }
 
 const GAME_COLUMNS = 'id, slug, opponent, match_date, match_time, venue, team_color, is_open, created_at';
-const RSVP_COLUMNS = 'id, game_id, name, status, created_at, updated_at';
+const RSVP_COLUMNS = 'id, game_id, name, first_name, last_name, preferred_position, status, created_at, updated_at';
 
 function toGame(row: GameRow): Game {
   return {
@@ -58,9 +64,32 @@ function toRsvp(row: RsvpRow): Rsvp {
     id: row.id,
     gameId: row.game_id,
     name: row.name,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    preferredPosition: row.preferred_position,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+interface RpcRsvpRow {
+  id: string;
+  name: string;
+  first_name: string | null;
+  last_name: string | null;
+  preferred_position: string | null;
+  status: RsvpStatus;
+}
+
+function toEditable(row: RpcRsvpRow): EditableRsvp {
+  return {
+    id: row.id,
+    name: row.name,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    preferredPosition: row.preferred_position,
+    status: row.status,
   };
 }
 
@@ -73,6 +102,31 @@ function validate(name: string, status: RsvpStatus): string {
     throw new RepositoryError('invalid_status', 'That availability option is not allowed.');
   }
   return clean;
+}
+
+interface CleanRsvpInput {
+  firstName: string;
+  lastName: string;
+  preferredPosition: string;
+  status: RsvpStatus;
+}
+
+function validateRsvpInput(input: RsvpInput): CleanRsvpInput {
+  const firstName = normalizeName(input.firstName);
+  if (!isValidName(firstName)) {
+    throw new RepositoryError('invalid_name', 'Please enter a first name between 1 and 40 characters.');
+  }
+  const lastName = normalizeName(input.lastName ?? '');
+  if (lastName.length > 40) {
+    throw new RepositoryError('invalid_name', 'Last name must be 40 characters or fewer.');
+  }
+  if (!RSVP_STATUSES.includes(input.status)) {
+    throw new RepositoryError('invalid_status', 'That availability option is not allowed.');
+  }
+  if (!ALL_POSITIONS.includes(input.preferredPosition)) {
+    throw new RepositoryError('invalid_position', 'Choose a valid position.');
+  }
+  return { firstName, lastName, preferredPosition: input.preferredPosition, status: input.status };
 }
 
 function validateColor(teamColor: string): string {
@@ -198,19 +252,35 @@ export class SupabaseRepository implements Repository {
   async listPublicRsvps(gameId: string): Promise<PublicRsvp[]> {
     const { data, error } = await this.client
       .from('public_rsvps')
-      .select('id, name, status')
+      .select('id, name, first_name, last_name, preferred_position, status')
       .eq('game_id', gameId)
       .order('created_at', { ascending: true });
     if (error) fail('list_rsvps_failed', error.message);
-    return (data as PublicRsvp[]).map((r) => ({ id: r.id, name: r.name, status: r.status }));
+    return (data as Array<{
+      id: string;
+      name: string;
+      first_name: string | null;
+      last_name: string | null;
+      preferred_position: string | null;
+      status: RsvpStatus;
+    }>).map((r) => ({
+      id: r.id,
+      name: r.name,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      preferredPosition: r.preferred_position,
+      status: r.status,
+    }));
   }
 
-  async createRsvp(gameId: string, name: string, status: RsvpStatus): Promise<CreatedRsvp> {
-    const clean = validate(name, status);
+  async createRsvp(gameId: string, input: RsvpInput): Promise<CreatedRsvp> {
+    const clean = validateRsvpInput(input);
     const { data, error } = await this.client.rpc('create_rsvp', {
       p_game_id: gameId,
-      p_name: clean,
-      p_status: status,
+      p_first_name: clean.firstName,
+      p_last_name: clean.lastName,
+      p_preferred_position: clean.preferredPosition,
+      p_status: clean.status,
     });
     if (error) fail('create_rsvp_failed', error.message);
     const row = (Array.isArray(data) ? data[0] : data) as { rsvp_id: string; edit_token: string };
@@ -224,32 +294,25 @@ export class SupabaseRepository implements Repository {
       p_token: token,
     });
     if (error) fail('get_rsvp_failed', error.message);
-    const row = (Array.isArray(data) ? data[0] : data) as
-      | { id: string; name: string; status: RsvpStatus }
-      | undefined;
+    const row = (Array.isArray(data) ? data[0] : data) as RpcRsvpRow | undefined;
     if (!row?.id) return null;
-    return { id: row.id, name: row.name, status: row.status };
+    return toEditable(row);
   }
 
-  async updateRsvpByToken(
-    rsvpId: string,
-    token: string,
-    name: string,
-    status: RsvpStatus,
-  ): Promise<EditableRsvp> {
-    const clean = validate(name, status);
+  async updateRsvpByToken(rsvpId: string, token: string, input: RsvpInput): Promise<EditableRsvp> {
+    const clean = validateRsvpInput(input);
     const { data, error } = await this.client.rpc('update_rsvp', {
       p_rsvp_id: rsvpId,
       p_token: token,
-      p_name: clean,
-      p_status: status,
+      p_first_name: clean.firstName,
+      p_last_name: clean.lastName,
+      p_preferred_position: clean.preferredPosition,
+      p_status: clean.status,
     });
     if (error) fail('update_rsvp_failed', error.message);
-    const row = (Array.isArray(data) ? data[0] : data) as
-      | { id: string; name: string; status: RsvpStatus }
-      | undefined;
+    const row = (Array.isArray(data) ? data[0] : data) as RpcRsvpRow | undefined;
     if (!row?.id) throw new RepositoryError('invalid_token', 'This edit link is not valid.');
-    return { id: row.id, name: row.name, status: row.status };
+    return toEditable(row);
   }
 
   async listRsvps(gameId: string): Promise<Rsvp[]> {
@@ -264,9 +327,10 @@ export class SupabaseRepository implements Repository {
 
   async updateRsvpAdmin(rsvpId: string, name: string, status: RsvpStatus): Promise<Rsvp> {
     const clean = validate(name, status);
+    const parts = splitFullName(clean);
     const { data, error } = await this.client
       .from('rsvps')
-      .update({ name: clean, status })
+      .update({ name: clean, first_name: parts.firstName, last_name: parts.lastName, status })
       .eq('id', rsvpId)
       .select(RSVP_COLUMNS)
       .single();
