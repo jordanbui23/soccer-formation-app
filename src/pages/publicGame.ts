@@ -125,21 +125,12 @@ function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, firstNa
   return form;
 }
 
-function lowResponsePrompt(game: Game): HTMLElement {
-  const url = `${location.origin}/game/${encodeURIComponent(game.slug)}`;
-  const copy = el('button', { type: 'button', class: 'btn-accent btn-block' }, ['Copy share link']);
-  copy.addEventListener('click', () => {
-    void navigator.clipboard?.writeText(url).then(
-      () => notify('Share link copied.'),
-      () => notify('Copy failed. Select the link manually.', 'error'),
-    );
-  });
+function lowResponsePrompt(): HTMLElement {
   return el('div', { class: 'roster-prompt' }, [
     el('p', { class: 'roster-prompt__title' }, ['Still waiting on the squad']),
     el('p', { class: 'roster-prompt__body' }, [
-      'Share the match link in your team chat so everyone can reply.',
+      'Remind your teammates to RSVP so the lineup is ready for match day.',
     ]),
-    copy,
   ]);
 }
 
@@ -251,7 +242,7 @@ export async function publicGamePage(slug: string): Promise<void> {
               `${counts.yes} in · ${counts.maybe} maybe · ${counts.no} out`,
             ]),
             rosterSection(rsvps),
-            ...(rsvps.length < 6 ? [lowResponsePrompt(currentGame)] : []),
+            ...(rsvps.length < 6 ? [lowResponsePrompt()] : []),
           ]),
         ]),
       ]),

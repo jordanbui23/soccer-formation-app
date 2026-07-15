@@ -666,9 +666,6 @@ button[aria-busy='true']::after {
   color: var(--c-text-soft);
   max-width: 42ch;
 }
-.roster-prompt .btn-accent {
-  max-width: 320px;
-}
 
 /* ---------- share / token box ---------- */
 .copy-row {
