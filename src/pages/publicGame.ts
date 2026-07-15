@@ -1,7 +1,9 @@
 import type { Game, PublicRsvp, RsvpStatus } from '../types';
 import { RSVP_STATUSES, STATUS_LABEL } from '../types';
 import { getRepository } from '../data';
+import { ALL_POSITIONS, DEFAULT_POSITION } from '../formations';
 import { forgetRsvp, getRememberedRsvp, rememberRsvp } from '../rememberedRsvp';
+import { fullNameOf } from '../rsvpName';
 import { el } from '../dom';
 import { navigate } from '../router';
 import { notify, errorMessage } from '../ui/toast';
@@ -27,7 +29,8 @@ function rosterSection(rsvps: PublicRsvp[]): HTMLElement {
     for (const r of members) {
       list.append(
         el('li', { class: `is-${status}` }, [
-          el('span', { class: 'r-name' }, [r.name]),
+          el('span', { class: 'r-name' }, [fullNameOf(r)]),
+          el('span', { class: 'r-pos' }, [r.preferredPosition ?? '—']),
           statusPill(r.status),
         ]),
       );
@@ -45,15 +48,31 @@ function rosterSection(rsvps: PublicRsvp[]): HTMLElement {
   return groups;
 }
 
-function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, name: string) => void): HTMLElement {
-  const nameInput = el('input', {
+function positionSelect(id: string, selected: string): HTMLSelectElement {
+  const select = el('select', { id, required: true }) as HTMLSelectElement;
+  for (const pos of ALL_POSITIONS) {
+    select.append(el('option', { value: pos, selected: pos === selected }, [pos]));
+  }
+  return select;
+}
+
+function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, firstName: string) => void): HTMLElement {
+  const firstInput = el('input', {
     type: 'text',
-    id: 'rsvp-name',
+    id: 'rsvp-first',
     required: true,
     maxLength: 40,
-    autocomplete: 'name',
-    placeholder: 'Your name',
+    autocomplete: 'given-name',
+    placeholder: 'First name',
   });
+  const lastInput = el('input', {
+    type: 'text',
+    id: 'rsvp-last',
+    maxLength: 40,
+    autocomplete: 'family-name',
+    placeholder: 'Last name (optional)',
+  });
+  const position = positionSelect('rsvp-position', DEFAULT_POSITION);
 
   const choice = el('div', { class: 'rsvp-choice', role: 'radiogroup', 'aria-label': 'Your availability' });
   RSVP_STATUSES.forEach((status, idx) => {
@@ -64,17 +83,19 @@ function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, name: s
 
   const submit = el('button', { type: 'submit', class: 'btn-accent btn-block' }, ['Send RSVP']);
   const form = el('form', { class: 'section-gap', novalidate: true }, [
-    el('div', { class: 'field-group' }, [el('label', { for: 'rsvp-name' }, ['Name']), nameInput]),
+    el('div', { class: 'field-group' }, [el('label', { for: 'rsvp-first' }, ['First name']), firstInput]),
+    el('div', { class: 'field-group' }, [el('label', { for: 'rsvp-last' }, ['Last name']), lastInput]),
+    el('div', { class: 'field-group' }, [el('label', { for: 'rsvp-position' }, ['Preferred position']), position]),
     el('div', { class: 'field-group' }, [el('label', {}, ['Availability']), choice]),
     submit,
   ]);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = nameInput.value.trim();
-    if (!name) {
-      notify('Please enter your name.', 'error');
-      nameInput.focus();
+    const firstName = firstInput.value.trim();
+    if (!firstName) {
+      notify('Please enter your first name.', 'error');
+      firstInput.focus();
       return;
     }
     const selected = (form.querySelector('input[name="status"]:checked') as HTMLInputElement | null)?.value as
@@ -85,8 +106,13 @@ function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, name: s
       submit.setAttribute('aria-busy', 'true');
       submit.disabled = true;
       try {
-        const { rsvpId, editToken } = await getRepository().createRsvp(game.id, name, status);
-        onCreated(rsvpId, editToken, name);
+        const { rsvpId, editToken } = await getRepository().createRsvp(game.id, {
+          firstName,
+          lastName: lastInput.value.trim(),
+          preferredPosition: position.value,
+          status,
+        });
+        onCreated(rsvpId, editToken, firstName);
       } catch (err) {
         notify(errorMessage(err), 'error');
       } finally {
