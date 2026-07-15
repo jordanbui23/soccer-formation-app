@@ -86,8 +86,8 @@ deep links resolve on Cloudflare Pages.
 - In Supabase mode, creation is a `SECURITY DEFINER` RPC: the database generates the token,
   so a client can neither submit an arbitrary hash nor bypass the game-open check. Updates go
   through an RPC that re-hashes the supplied token and compares server-side.
-- The public only ever reads the `public_rsvps` projection (id, name, status). The
-  `edit_token_hash` column is never exposed.
+- The public only ever reads the `public_rsvps` projection (id, name, first_name, last_name,
+  preferred_position, status, created_at). The `edit_token_hash` column is never exposed.
 - All `SECURITY DEFINER` functions set `search_path = ''`, fully qualify every reference,
   validate the trimmed name and allowed status, check the game-open state, and are granted
   execute only to `anon`/`authenticated` after revoking the default `PUBLIC` grant.
@@ -109,6 +109,20 @@ A player who replies **Yes** is added once as an unassigned substitute. Changing
 removes that player (and clears their placement) without touching manually added players. Admin
 name edits flow through to the linked lineup player. All of this lives in pure functions in
 `src/lineup.ts` and is covered by the test suite.
+
+## RSVP names and preferred position
+
+An RSVP captures a required **first name**, an optional **last name**, and a required
+**preferred position** (one of the fine-grained codes in `ALL_POSITIONS`, e.g. `CB`, `CDM`,
+`ST`). The composed full name is stored in `name` (kept authoritative and non-null), with
+`first_name` / `last_name` / `preferred_position` as structured columns added additively in
+`0003_add_rsvp_name_position.sql`. Rows created before that migration keep their single `name`
+with the structured columns left `null`; display falls back to `name` and shows a dash for a
+missing position. Rosters render the full name plus position; the tactics board and PNG/PDF
+export show **first name only**, disambiguating shared first names with a last initial
+(`Sam K.` / `Sam D.`). Preferred position is stored and displayed only; it does not
+auto-assign lineup slots. Name/position helpers live in `src/rsvpName.ts` and are covered by
+the test suite.
 
 ## Formations
 
