@@ -125,6 +125,24 @@ function rsvpForm(game: Game, onCreated: (rsvpId: string, token: string, firstNa
   return form;
 }
 
+function lowResponsePrompt(game: Game): HTMLElement {
+  const url = `${location.origin}/game/${encodeURIComponent(game.slug)}`;
+  const copy = el('button', { type: 'button', class: 'btn-accent btn-block' }, ['Copy share link']);
+  copy.addEventListener('click', () => {
+    void navigator.clipboard?.writeText(url).then(
+      () => notify('Share link copied.'),
+      () => notify('Copy failed. Select the link manually.', 'error'),
+    );
+  });
+  return el('div', { class: 'roster-prompt' }, [
+    el('p', { class: 'roster-prompt__title' }, ['Still waiting on the squad']),
+    el('p', { class: 'roster-prompt__body' }, [
+      'Share the match link in your team chat so everyone can reply.',
+    ]),
+    copy,
+  ]);
+}
+
 function editRouteFor(game: Game, rsvpId: string, token: string): string {
   return `/game/${encodeURIComponent(game.slug)}/edit/${encodeURIComponent(rsvpId)}#token=${token}`;
 }
@@ -222,7 +240,7 @@ export async function publicGamePage(slug: string): Promise<void> {
   rebuildRsvpPanel();
 
   render(
-    el('main', { class: 'page', id: 'main' }, [
+    el('main', { class: 'page page--game', id: 'main' }, [
       matchTicket(currentGame),
       el('div', { class: 'detail-grid', style: 'margin-top:24px;' }, [
         el('div', { class: 'card' }, [rsvpPanel]),
@@ -233,6 +251,7 @@ export async function publicGamePage(slug: string): Promise<void> {
               `${counts.yes} in · ${counts.maybe} maybe · ${counts.no} out`,
             ]),
             rosterSection(rsvps),
+            ...(rsvps.length < 6 ? [lowResponsePrompt(currentGame)] : []),
           ]),
         ]),
       ]),

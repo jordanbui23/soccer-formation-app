@@ -92,6 +92,9 @@ a {
 .page--narrow {
   max-width: 620px;
 }
+.page--game {
+  max-width: 960px;
+}
 
 .topbar {
   display: flex;
@@ -640,6 +643,31 @@ button[aria-busy='true']::after {
   color: var(--c-text-faint);
   border: 2px dashed var(--c-card-line);
   border-radius: var(--r-lg);
+}
+
+.roster-prompt {
+  margin-top: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4);
+  text-align: center;
+  border: 2px dashed var(--c-card-line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-deep);
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+}
+.roster-prompt__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  color: var(--c-text);
+}
+.roster-prompt__body {
+  color: var(--c-text-soft);
+  max-width: 42ch;
+}
+.roster-prompt .btn-accent {
+  max-width: 320px;
 }
 
 /* ---------- share / token box ---------- */
