@@ -10,6 +10,7 @@ import { getStarters, getSubs } from './lineup';
 import { pitchMarkupSvgInner } from './field';
 import { el } from './dom';
 import { foregroundFor, isDarkColor, normalizeHexColor } from './color';
+import { fieldLabels } from './rsvpName';
 
 const GK_COLOR = '#e08a1e';
 
@@ -41,6 +42,7 @@ function buildFieldSvg(state: LineupState, teamColor: string): SVGSVGElement {
 
   const starters = getStarters(state);
   const slots = assignSlots(state.formation, starters, state.slotOverrides);
+  const labels = fieldLabels(starters.map((p) => p.name));
   starters.forEach((player, i) => {
     const slotIdx = slots[i] ?? i;
     const [x, y] = coordsFor(state, player, slotIdx);
@@ -54,11 +56,11 @@ function buildFieldSvg(state: LineupState, teamColor: string): SVGSVGElement {
       y: y + 4,
       'text-anchor': 'middle',
       fill: textFill,
-      'font-size': 9,
+      'font-size': 12,
       'font-weight': 'bold',
       'font-family': 'sans-serif',
     });
-    label.textContent = player.name.slice(0, 12);
+    label.textContent = labels[i];
     svg.append(label);
   });
   return svg;

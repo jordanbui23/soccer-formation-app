@@ -124,7 +124,13 @@ export async function adminGameDetailPage(gameId: string): Promise<void> {
 
     return el('li', { class: `is-${rsvp.status}` }, [
       el('div', { style: 'flex:1;min-width:0;display:grid;gap:6px;' }, [
-        el('div', { class: 'form-row' }, [nameInput, el('div', { style: 'flex:0 0 110px;' }, [statusSelect])]),
+        el('div', { class: 'form-row' }, [
+          nameInput,
+          el('span', { class: 'r-pos', 'aria-label': `Preferred position for ${rsvp.name}` }, [
+            rsvp.preferredPosition ?? '—',
+          ]),
+          el('div', { style: 'flex:0 0 110px;' }, [statusSelect]),
+        ]),
       ]),
       el('div', { class: 'r-actions' }, [saveBtn, delBtn]),
     ]);

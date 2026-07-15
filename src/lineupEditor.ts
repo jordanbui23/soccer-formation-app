@@ -26,6 +26,7 @@ import { el, clear } from './dom';
 import { notify, errorMessage } from './ui/toast';
 import { exportPdf, exportPng } from './export';
 import { foregroundFor, isDarkColor, normalizeHexColor } from './color';
+import { fieldLabels } from './rsvpName';
 
 const GROUP_CLASS: Record<string, string> = { GK: 'gk', DEF: 'def', MID: 'mid', FWD: 'fwd' };
 const SWAP_THRESHOLD = 55;
@@ -341,6 +342,7 @@ export class LineupEditor {
     this.pitchWrap.querySelectorAll('.token').forEach((n) => n.remove());
     const starters = getStarters(this.state);
     const positions = this.slotPositions(starters);
+    const labels = fieldLabels(starters.map((p) => p.name));
     const teamColor = normalizeHexColor(this.game.teamColor);
     const teamText = foregroundFor(teamColor);
     const darkKit = isDarkColor(teamColor);
@@ -354,7 +356,7 @@ export class LineupEditor {
         role: 'button',
         tabindex: 0,
         'aria-label': `${player.name}, ${player.pos}. Drag or use arrow keys to reposition.`,
-      }, [el('span', { class: 'token-name' }, [player.name])]);
+      }, [el('span', { class: 'token-name' }, [labels[i]])]);
       if (!isGk) {
         token.style.background = teamColor;
         token.style.color = teamText;
