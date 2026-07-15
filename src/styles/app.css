@@ -18,7 +18,7 @@ body {
   line-height: 1.55;
   color: var(--c-text);
   background:
-    radial-gradient(120% 80% at 100% 0%, rgba(212, 163, 115, 0.16), transparent 60%),
+    radial-gradient(120% 80% at 100% 0%, rgba(64, 145, 108, 0.16), transparent 60%),
     var(--c-paper);
   min-height: 100vh;
   min-height: 100dvh;
