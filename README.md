@@ -54,6 +54,32 @@ as it does in production. Demo mode is a local sandbox and makes **no security g
 
 Only the public **anon** key is used client-side. The service-role key is never referenced.
 
+### Keeping a free-plan project awake
+
+Supabase pauses a free-plan project after a stretch with no activity. `scripts/supabase-keepalive.sh`
+sends one activity ping a day: an authenticated REST read of `public.games?select=id&limit=1` using
+the same public **anon** key the browser bundle already carries. It is a read, so it needs no new
+table, no migration, and no service-role key, and it adds no write surface.
+
+The script takes `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the environment, falling
+back to the git-ignored `.env`. It exits `0` only on a confirmed `HTTP 200` with a JSON array body;
+`2` means the config is missing and `3` means the ping was not confirmed.
+
+```bash
+./scripts/supabase-keepalive.sh    # run it by hand
+```
+
+Scheduled on the dev desktop via `crontab -l`:
+
+```
+20 7 * * * /local/home/jbui/projects/soccer-formation-app/scripts/supabase-keepalive.sh >> ~/.local/share/matchday-keepalive/keepalive.log 2>&1
+```
+
+The log holds one dated line per run, so a broken ping is visible as a `FAIL` line. A host-based
+cron only fires while the host is up: if the desktop is off or reimaged for longer than Supabase's
+inactivity window, the project can still pause, and the crontab entry must be reinstalled after a
+reimage.
+
 ## Scripts
 
 ```bash
